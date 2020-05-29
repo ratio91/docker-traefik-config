@@ -1,0 +1,63 @@
+version: '3.3'
+
+volumes:
+ traefik:
+
+services:
+ traefik:
+  image: traefik:latest
+  ports:
+  - 80:80
+  - 443:443
+  command:   
+  - --log.level=ERROR
+  - --api.dashboard=true
+  - --providers.docker=true
+  - --providers.docker.exposedbydefault=false
+  - --providers.docker.swarmMode=true
+  - --entryPoints.web.address=:80
+  - --entrypoints.web-secure.address=:443
+  - --entryPoints.goerli.address=:30303
+  - --certificatesresolvers.mytlschallenge.acme.dnschallenge.provider=cloudflare
+  - --certificatesresolvers.mytlschallenge.acme.dnschallenge.delaybeforecheck=0
+  - --certificatesresolvers.mytlschallenge.acme.tlschallenge=true
+  - --certificatesresolvers.mytlschallenge.acme.caserver=https://acme-v02.api.letsencrypt.org/directory  
+  - --certificatesresolvers.mytlschallenge.acme.email=${TECH_ADMIN_MAIL}
+  - --certificatesresolvers.mytlschallenge.acme.storage=/etc/traefik/acme.json
+  - --metrics.prometheus=true
+  - --metrics.influxdb=true
+  - --metrics.influxdb.protocol=http
+  - --metrics.influxdb.address=influxdb:8086
+  - --metrics.influxdb.database=traefik
+  - --metrics.influxdb.username=${INFLUXDB_ADMIN_USER}
+  - --metrics.influxdb.password=${INFLUXDB_ADMIN_PASSWORD}  
+  volumes:
+  - type: bind
+    source: /var/run/docker.sock
+    target: /var/run/docker.sock
+  - type: volume
+    source: traefik
+    target: /etc/traefik
+  environment:
+  - CF_API_EMAIL=${CF_API_EMAIL}
+  - CF_API_KEY=${CF_API_KEY}
+  deploy:
+    placement:
+     constraints:
+     - node.role == manager
+    restart_policy:
+     condition: on-failure
+    labels:
+    - traefik.enable=true
+    - traefik.http.routers.traefik.tls=true
+    - traefik.http.routers.traefik.entrypoints=web-secure
+    - traefik.http.routers.traefik.tls.certresolver=mytlschallenge
+    - traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DOMAIN}`)
+    - traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)
+    - traefik.http.routers.http-catchall.entrypoints=web
+    - traefik.http.routers.http-catchall.middlewares=redirect-to-https
+    - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+    - traefik.http.routers.traefik.service=api@internal 
+    - traefik.http.routers.traefik.middlewares=traefik-auth
+    - traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_PW}
+    - traefik.http.services.traefik.loadbalancer.server.port=8080
