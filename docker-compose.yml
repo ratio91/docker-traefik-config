@@ -40,22 +40,17 @@ services:
   environment:
   - CF_API_EMAIL=${CF_API_EMAIL}
   - CF_API_KEY=${CF_API_KEY}
-  deploy:
-    placement:
-     constraints:
-     - node.role == manager
-    restart_policy:
-     condition: on-failure
-    labels:
-    - traefik.enable=true
-    - traefik.http.routers.traefik.tls=true
-    - traefik.http.routers.traefik.entrypoints=web-secure
-    - traefik.http.routers.traefik.tls.certresolver=mytlschallenge
-    - traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DOMAIN}`)
-    - traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)
-    - traefik.http.routers.http-catchall.entrypoints=web
-    - traefik.http.routers.http-catchall.middlewares=redirect-to-https
-    - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
-    - traefik.http.routers.traefik.service=api@internal 
-    - traefik.http.routers.traefik.middlewares=traefik-auth
-    - traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_PW}
+  restart: always
+  labels:
+  - traefik.enable=true
+  - traefik.http.routers.traefik.tls=true
+  - traefik.http.routers.traefik.entrypoints=web-secure
+  - traefik.http.routers.traefik.tls.certresolver=mytlschallenge
+  - traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DOMAIN}`)
+  - traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)
+  - traefik.http.routers.http-catchall.entrypoints=web
+  - traefik.http.routers.http-catchall.middlewares=redirect-to-https
+  - traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https
+  - traefik.http.routers.traefik.service=api@internal 
+  - traefik.http.routers.traefik.middlewares=traefik-auth
+  - traefik.http.middlewares.traefik-auth.basicauth.users=${TRAEFIK_PW}
